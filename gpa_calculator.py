@@ -1,72 +1,76 @@
 import streamlit as st
-import pandas as pd
-
-# --------------------------------------------
-# GPA CALCULATOR STREAMLIT APP
-# --------------------------------------------
-
-st.set_page_config(page_title="GPA & CGPA Calculator", page_icon="🎓", layout="centered")
 
 st.title("🎓 GPA & CGPA Calculator")
 
-st.write("Enter your course grades and credit hours to calculate your GPA and CGPA easily.")
-
-# Grade to grade-point mapping (you can customize)
+# Mapping grades to points
 grade_points = {
-    "A+": 4.0,
     "A": 4.0,
-    "A-": 3.7,
-    "B+": 3.3,
+    "A-": 3.66,
+    "B+": 3.33,
     "B": 3.0,
-    "B-": 2.7,
-    "C+": 2.3,
+    "B-": 2.66,
+    "C+": 2.33,
     "C": 2.0,
-    "C-": 1.7,
+    "C-": 1.66,
+    "D+": 1.33,
     "D": 1.0,
     "F": 0.0
 }
 
-# Input: number of courses
-num_courses = st.number_input("Enter number of courses this semester:", min_value=1, step=1)
+st.header("📚 Current Semester")
 
-course_data = []
+num_courses = st.number_input("Number of courses this semester", min_value=1, max_value=20, step=1)
+
+current_grades = []
+current_credits = []
+
 for i in range(int(num_courses)):
-    st.subheader(f"Course {i+1}")
-    course_name = st.text_input(f"Course {i+1} Name:", key=f"name_{i}")
-    grade = st.selectbox(f"Select Grade for {course_name or 'Course '+str(i+1)}", list(grade_points.keys()), key=f"grade_{i}")
-    credit = st.number_input(f"Credit Hours for {course_name or 'Course '+str(i+1)}:", min_value=1.0, step=0.5, key=f"credit_{i}")
-    course_data.append({"Course": course_name, "Grade": grade, "Credit Hours": credit})
+    col1, col2 = st.columns(2)
+    with col1:
+        grade = st.selectbox(f"Grade for Course {i+1}", list(grade_points.keys()), key=f"grade_{i}")
+    with col2:
+        credit = st.number_input(f"Credit Hours for Course {i+1}", min_value=0.0, step=0.5, key=f"credit_{i}")
+    current_grades.append(grade_points[grade])
+    current_credits.append(credit)
 
-# Calculate GPA
-if st.button("Calculate GPA"):
-    df = pd.DataFrame(course_data)
-    df["Grade Point"] = df["Grade"].map(grade_points)
-    df["Weighted Points"] = df["Grade Point"] * df["Credit Hours"]
+# GPA Calculation
+def calculate_gpa(grades, credits):
+    total_points = sum(g * c for g, c in zip(grades, credits))
+    total_credits = sum(credits)
+    if total_credits == 0:
+        return 0.0
+    return total_points / total_credits
 
-    total_credits = df["Credit Hours"].sum()
-    total_weighted_points = df["Weighted Points"].sum()
-    gpa = total_weighted_points / total_credits
+current_gpa = calculate_gpa(current_grades, current_credits)
+st.success(f"🎯 GPA for Current Semester: **{current_gpa:.2f}**")
 
-    st.success(f"🎯 Your GPA for this semester is: **{gpa:.2f}**")
-    st.dataframe(df)
+# Previous semesters
+st.header("🕒 Previous Semesters (for CGPA)")
+
+num_prev = st.number_input("Number of previous semesters", min_value=0, max_value=20, step=1)
+
+prev_gpas = []
+prev_credits = []
+
+for i in range(int(num_prev)):
+    col1, col2 = st.columns(2)
+    with col1:
+        gpa = st.number_input(f"GPA of Semester {i+1}", min_value=0.0, max_value=4.0, step=0.01, key=f"prev_gpa_{i}")
+    with col2:
+        credit = st.number_input(f"Total Credits in Semester {i+1}", min_value=0.0, step=0.5, key=f"prev_credit_{i}")
+    prev_gpas.append(gpa)
+    prev_credits.append(credit)
 
 # CGPA Calculation
-st.markdown("---")
-st.header("📊 CGPA Calculator")
+total_prev_points = sum(g * c for g, c in zip(prev_gpas, prev_credits))
+total_prev_credits = sum(prev_credits)
 
-st.write("Enter your previous CGPA and total completed credit hours to calculate your new CGPA.")
+total_current_points = current_gpa * sum(current_credits)
+total_current_credits = sum(current_credits)
 
-prev_cgpa = st.number_input("Previous CGPA:", min_value=0.0, max_value=4.0, step=0.01)
-prev_credits = st.number_input("Total Credit Hours Completed Before This Semester:", min_value=0.0, step=0.5)
-new_credits = st.number_input("Credit Hours Taken This Semester:", min_value=0.0, step=0.5)
-current_gpa = st.number_input("This Semester’s GPA:", min_value=0.0, max_value=4.0, step=0.01)
+cgpa = 0.0
+if (total_prev_credits + total_current_credits) > 0:
+    cgpa = (total_prev_points + total_current_points) / (total_prev_credits + total_current_credits)
 
-if st.button("Calculate CGPA"):
-    try:
-        new_cgpa = ((prev_cgpa * prev_credits) + (current_gpa * new_credits)) / (prev_credits + new_credits)
-        st.success(f"🏅 Your Updated CGPA is: **{new_cgpa:.2f}**")
-    except ZeroDivisionError:
-        st.error("Please ensure total credit hours are greater than 0.")
+st.success(f"🏆 CGPA: **{cgpa:.2f}**")
 
-st.markdown("---")
-st.caption("Developed by Syeda Rafia Gilani 💻 | Streamlit GPA & CGPA Calculator")
